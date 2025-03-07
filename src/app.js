@@ -27,8 +27,8 @@ app.use(
 
 // Rate Limiting Middleware
 const apiLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 300, // Limit each IP to 300 requests per window
+  windowMs: 5 * 60 * 1000, // 10 minutes
+  max: 150, // Limit each IP to 300 requests per window
   message: "Too many requests from this IP, please try again later.",
 });
 app.use("/api/", apiLimiter);

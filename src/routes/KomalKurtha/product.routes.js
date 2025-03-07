@@ -16,20 +16,21 @@ const router = express.Router();
 
 // Route: Contact US
 router.route('/contact')
-  .post(VerifyJWT,contactUsKomal);
+  .post(contactUsKomal);
 
 // Route: /api/products
 router.route('/')
-  .get(VerifyJWT,getProducts)
-  .post(createProduct);
+  .get(getProducts)
+  .post(VerifyJWT,createProduct);
 
 // Route: /api/products/featured
 router.get('/featured', getFeaturedProducts);
 
+
 // Route: /api/products/:id
 router.route('/:id')
   .get(getProductById)
-  .put(updateProduct)
-  .delete(deleteProduct);
+  .put(VerifyJWT,updateProduct)
+  .delete(VerifyJWT,deleteProduct);
 
 export default router;
