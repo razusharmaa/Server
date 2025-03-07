@@ -6,6 +6,8 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import errorHandler from "./middleware/errorHandler.js";
 import userRouter from "./routes/user.routes.js";
+import cartRouter from "./routes/KomalKurtha/cart.routes.js";
+import productRouter from "./routes/KomalKurtha/product.routes.js";
 
 dotenv.config();
 
@@ -18,8 +20,8 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN, // Frontend URL from env variable
-    credentials: true, // Allow cookies to be sent
-    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
+    credentials: true, // Allow cookies/auth headers
+    allowedHeaders: ["Content-Type", "Authorization"], // Explicitly allow headers
   })
 );
 
@@ -43,8 +45,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Cookie Parser middleware to parse cookies
 app.use(cookieParser());
 
-// Routes
+// User Routes
 app.use("/api/v1/users", userRouter);
+
+// Komal Kurtha Website Routes
+app.use('/api/v1/komal/cart',cartRouter)
+app.use('/api/v1/komal/product',productRouter)
 
 
 // Error handling middleware

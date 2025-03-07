@@ -13,6 +13,7 @@ import Mailgen from "mailgen";
 import axios from "axios";
 
 import bcrypt from "bcrypt";
+import { decrypt } from "../utils/encryption.utils.js";
 
 const GenerateRefreshAccessToken = async (userId, rememberMe = false) => {
   try {
@@ -96,7 +97,6 @@ const registerUser = asyncHandler(async (req, res) => {
       isVerified: false,
     });
 
-
     const createdUser = await User.findById(user._id).select(
       "-password -refreshToken"
     );
@@ -119,25 +119,26 @@ const registerUser = asyncHandler(async (req, res) => {
     //   sameSite: "none",
     //   maxAge: 24 * 60 * 60 * 1000, // 1 days in milliseconds
 
-      
     // };
 
     await session.commitTransaction();
 
-    return res
-      // .cookie("refresh_token", refreshToken, options)
-      .status(201)
-      .json(
-        new ApiResponse(
-          201,
-          {
-            user: createdUser,
-            accessToken,
-            refreshToken,
-          },
-          "User registered successfully. Please check your email to verify your account."
+    return (
+      res
+        // .cookie("refresh_token", refreshToken, options)
+        .status(201)
+        .json(
+          new ApiResponse(
+            201,
+            {
+              user: createdUser,
+              accessToken,
+              refreshToken,
+            },
+            "User registered successfully. Please check your email to verify your account."
+          )
         )
-      );
+    );
   } catch (error) {
     await session.abortTransaction();
     throw new ApiError(
@@ -295,12 +296,10 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     const options = {
       httpOnly: true, // Ensures the cookie is not accessible via JavaScript (for security)
-      secure: true,   // Ensures the cookie is sent only over HTTPS
+      secure: true, // Ensures the cookie is sent only over HTTPS
       sameSite: "none", // Allows cross-site cookies (required for cross-origin setups)
       maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds (adjust as needed)
     };
-    
-    
 
     // Clear cookies and send response
     return res
@@ -320,7 +319,9 @@ const loginUser = asyncHandler(async (req, res) => {
   if (![email, password].every(Boolean)) {
     throw new ApiError(400, "All fields are required, including reCAPTCHA");
   }
- 
+  // if (![email, password, recaptchaValue].every(Boolean)) {
+  //   throw new ApiError(400, "All fields are required, including reCAPTCHA");
+  // }
 
   // const recaptchaSecret = process.env.RECAPTCHA_SECRET;
   // const recaptchaResponse = await axios.post(
@@ -360,19 +361,19 @@ const loginUser = asyncHandler(async (req, res) => {
     rememberMe
   );
 
-  // const options = {
-  //   httpOnly: true,
-  //   secure: true,
-  //   sameSite: "none",
-  //   maxAge: rememberMe ? 6 * 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+  const options = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    maxAge: rememberMe ? 6 * 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
 
-  // };
+  };
 
   return res
-    // .cookie("refresh_token", refreshToken, options)
+    .cookie("refreshToken", refreshToken, options)
     .status(200)
     .json(
-      new ApiResponse(200, { user, accessToken,refreshToken }, "User logged in successfully")
+      new ApiResponse(200, { accessToken }, "User logged in successfully")
     );
 });
 
@@ -424,17 +425,9 @@ const loginUser = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
-    // Extract the Authorization header
-    const authHeader = req.headers.authorization;
-
-    // Ensure the Authorization header exists and follows the "Bearer <token>" format
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new ApiError(400, "Authorization token is required");
-    }
-
-    // Extract the token from the Authorization header
-    const incomingRefreshToken = authHeader.split(" ")[1];
-
+    const incomingRefreshToken = req.cookies?.refreshToken;
+    console.log(incomingRefreshToken);
+    
     if (!incomingRefreshToken) {
       throw new ApiError(400, "Refresh token is required");
     }
@@ -496,19 +489,28 @@ const sendVerificationCode = asyncHandler(async (req, res) => {
     // If a token exists, decode it and check its validity
     if (verificationToken) {
       try {
-        const decodedToken = jwt.verify(verificationToken, process.env.JWT_SECRET);
+        const decodedToken = jwt.verify(
+          verificationToken,
+          process.env.JWT_SECRET
+        );
         // Check if the token is still valid (not expired)
 
         if (decodedToken.exp * 1000 > Date.now()) {
           // Token is still valid
-          throw new ApiError(403, "Please try requesting a new verification email after 20 minutes");
+          throw new ApiError(
+            403,
+            "Please try requesting a new verification email after 20 minutes"
+          );
         }
       } catch (error) {
         // Handle specific JWT errors
         if (error.name === "TokenExpiredError") {
           // Token has expired; it's okay to create a new one
         } else {
-          throw new ApiError(403, "Please try requesting a new verification email after 20 minutes");
+          throw new ApiError(
+            403,
+            "Please try requesting a new verification email after 20 minutes"
+          );
         }
       }
     }
@@ -677,10 +679,6 @@ const UpdateAccount = asyncHandler(async (req, res) => {
     throw new ApiError(401, error.message || "Invalid refresh token");
   }
 });
-
-
-
-
 
 const changeAvatar = asyncHandler(async (req, res) => {
   const { currentPassword } = req.body;
